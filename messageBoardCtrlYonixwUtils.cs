@@ -24,6 +24,7 @@ using UnityEngine.SceneManagement;
 // Show escaped tags to see whats rendering
     //  Fix center by '#1'...?
 // "Add pause" to each line -> Pause by console but sound keep going
+// Print all UI text -> Name + value, and allow to choose who to RTL
 
 // Evidence bag? RTL? Text find... and parent chain...
 
