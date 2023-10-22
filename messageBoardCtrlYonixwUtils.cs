@@ -8,6 +8,7 @@ using UnityEngine.SceneManagement;
 using System.Text.RegularExpressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Diagnostics; // Win only
 
 
 /*
@@ -19,14 +20,15 @@ using UnityEngine.SceneManagement;
 // Todo:
 // Allow refresh line with new regex (need to save cache)
     // Refresh
-// Allow custom row enter? tags included?
 // Allow show meta (position?) of labels
-// Show escaped tags to see whats rendering
-    //  Fix center by '#1'...?
-// "Add pause" to each line -> Pause by console but sound keep going
-// Print all UI text -> Name + value, and allow to choose who to RTL
+// Allow custom row enter? tags included?
+        //  Fix center by '##1'...?
+// Print all files as they are loaded (where to inject?...)
+    // Load in any scene:
+        // https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
 
-// Evidence bag? RTL? Text find... and parent chain...
+// Complex Config XML:
+    // https://learn.microsoft.com/en-us/dotnet/api/system.xml.serialization.xmlserializer?view=net-7.0&redirectedfrom=MSDN
 
 /*
 public partial class messageBoardCtrl : MonoBehaviour
@@ -52,7 +54,7 @@ public static class messageBoardCtrlYonixwUtils  {
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AllocConsole();
+    private static extern bool AllocConsole(); // Win Only
     
     public static int _rtl_i = 1;
     public static string _rtl_flag = "<size=1></size>";
@@ -77,35 +79,94 @@ public static class messageBoardCtrlYonixwUtils  {
         return _def;
     }
     
+    public static string objPath(Transform t) {
+        string path = t.name;
+        Transform parent = t.parent;
+        while (parent != null) {
+            path = parent.name + "/" + path;
+            parent = parent.parent;
+        }
+        return path;
+    }
+    
+    public static void SetClipboard(string value)
+    {
+        Process clipboardExecutable = new Process(); 
+        clipboardExecutable.StartInfo = new ProcessStartInfo // Creates the process
+        {
+            RedirectStandardInput = true,
+            FileName = @"clip", 
+        };
+        clipboardExecutable.Start();
+
+        clipboardExecutable.StandardInput.Write(value); // CLIP uses STDIN as input.
+        // When we are done writing all the string, close it so clip doesn't wait and get stuck
+        clipboardExecutable.StandardInput.Close(); 
+
+        return;
+    }
+    
     public static void _LateUpdate(List<Text> line_list_)
     {
         if (_config == null)
         {
-            _config = messageBoardCtrlYonixwUtils.getConfig(messageBoardCtrlYonixwUtils.getConfigLines());
+            _config = messageBoardCtrlYonixwUtils.getConfig(
+                    messageBoardCtrlYonixwUtils.getConfigLines());
         }
         if (Input.GetKeyUp(KeyCode.F4))
         {
             AllocConsole();
             _stdOutWriter = new StreamWriter(Console.OpenStandardOutput());
             _stdOutWriter.AutoFlush = true;
-            l("[Console Start] " + Time.deltaTime);
+            l("[F4] Console Start! " + Time.deltaTime);
         }
         if (Input.GetKeyUp(KeyCode.F5))
         {
             _config = getConfig(getConfigLines());
             incRtlFlag();
-            l("[F5] " + Time.deltaTime);
+            l("[F5] Refresh config! " + Time.deltaTime);
         }
         if (Input.GetKeyUp(KeyCode.F6))
         {
-            //l("[F6 Input] " + Time.deltaTime);
-            //string line = rl();
-            //l("[F6 Echo] " + line);
-            l("[F6] Lines:");
-            l("[0]: " + line_list_[0].text);
-            l("[1]: " + line_list_[1].text);
-            l("[2]: " + line_list_[2].text);
+            l("[F6] Waiting, Enter option, [0] Help, [empty] to continure");
+            string option = rl();
+            l("[F6] Got option: " + option);
+            
+            if (option == "0") {
+                l("[0] Help, all options:");
+                l("[1] dump 3 dialog lines");
+                l("[2] print dump all (active) UnityEngine.UI.Text");
+                l("[3] copy  dump all (active) UnityEngine.UI.Text");
+            }
+            if (option == "1") {
+                l("[0]: " + line_list_[0].text);
+                l("[1]: " + line_list_[1].text);
+                l("[2]: " + line_list_[2].text);
+            }
+            if (option == "2" || option == "3") {
+                UnityEngine.UI.Text[] allTxts = 
+                    GameObject.FindObjectsOfType<UnityEngine.UI.Text>();
+                // including inactive: Resources.FindObjectsOfTypeAll<BaseClass>();
+                string result = "";
+                int i = 0;
+                foreach(UnityEngine.UI.Text _t in allTxts) {
+                    result += "(" + i + ")" + "\n";
+                    i++;
+                    
+                    result += "[Path] " + objPath(_t.transform) + "\n";
+                    result += "[Text] " + _t.text + "\n";
+                }
+                
+                if (option == "2") {
+                    l(result);
+                }
+                if (option == "3") {
+                    l("Copied to clipboard");
+                    SetClipboard(result);
+                }
+            }            
         }
+        
         foreach (Text text in line_list_)
         {
             if (!string.IsNullOrEmpty(text.text) && !text.text.StartsWith(_rtl_flag))
@@ -113,6 +174,7 @@ public static class messageBoardCtrlYonixwUtils  {
                 text.text = _rtl_flag + fullregreplace(FixRTL(text.text), _config);
             }
         }
+        
     }
 
     // -------- Smart RTL reverse without tag reverse
