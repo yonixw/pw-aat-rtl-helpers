@@ -18,6 +18,9 @@ using UnityEngine.SceneManagement;
 */
 
 // Todo:
+
+// Get all tags and their meaning?
+
 // Allow refresh line with new regex (need to save cache)
     // Refresh
 // Allow show meta (position?) of labels
