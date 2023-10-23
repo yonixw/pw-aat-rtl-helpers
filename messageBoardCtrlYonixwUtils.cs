@@ -2,12 +2,17 @@ using System;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
+
+using System.Xml.Serialization;
+
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+
 using System.Text.RegularExpressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
+
 using System.Diagnostics; // Win only
 
 
@@ -90,6 +95,26 @@ public static class messageBoardCtrlYonixwUtils  {
             parent = parent.parent;
         }
         return path;
+    }
+    
+    public static string toXML<T>(T s) {
+       XmlSerializer serializer =
+            new XmlSerializer(typeof(T));
+        using (StringWriter textWriter = new StringWriter())
+        {
+            serializer.Serialize(textWriter, s);
+            return textWriter.ToString();
+        }
+    }
+    
+    public static T fromXML<T>(string s)
+    {
+        XmlSerializer xmlSerializer = 
+            new XmlSerializer(typeof(T));
+        using (StringReader textReader = new StringReader(s))
+        {
+            return (T)xmlSerializer.Deserialize(textReader);
+        }
     }
     
     public static void SetClipboard(string value)
