@@ -29,15 +29,12 @@ using UnityEngine.SceneManagement;
 // Allow refresh line with new regex (need to save cache)
     // Refresh
 // Allow show meta (position?) of labels
-// Allow custom row enter? tags included?
-        //  Fix center by '##1'...?
+
+// Fix center by '##1'...?
 // Print all files as they are loaded (where to inject?...)
     // Load in any scene:
         // https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
-
-// Complex Config XML:
-    // https://learn.microsoft.com/en-us/dotnet/api/system.xml.serialization.xmlserializer?view=net-7.0&redirectedfrom=MSDN
-
+        
 /*
 public partial class messageBoardCtrl : MonoBehaviour
 {
@@ -67,31 +64,60 @@ public static class messageBoardCtrlYonixwUtils  {
     public static int _rtl_i = 1;
     public static string _rtl_flag = "<size=1></size>";
     
-    public static List<string[]> _config = null;
-    
-    private static StreamWriter _stdOutWriter;
-
     public static void incRtlFlag () {
             _rtl_i++;
             _rtl_flag = "<size=" + _rtl_i + "></size>";
+            _rtl_txt_cache = (new string[_rtl_txt_cache.Length]).ToList();
     }
     
+    public static List<string> _source_txt_cache = new List<string>();
+    public static List<Text> _txt_cache = new List<Text>();
+    public static bool _reuse_cache = false;
+    
+    public static XWConfig _config = null;
+    
+    public class XWConfig {
+        
+        public class XWReplace {
+            public string regex;
+            public string replace;
+        }
+        
+        public List<XWReplace> replaces = new List<XWReplace>();
+        
+        // Assuming no new Gameobject are added,
+        // so only need to find them once, using filter
+        public List<string> unityUINameRegex = new List<string>();
+        
+        public class XWSimpleReplace {
+            public string exact;
+            public string replace;
+        }
+        
+        public List<XWSimpleReplace> simpleTranslate = new List<XWSimpleReplace>();
+    }
+    
+    private Dictionary<string, string> _simpleReplace = 
+            new Dictionary<string, string>();
+    
+    private static StreamWriter _consoleStdOutWriter;
+
     public static void l(string l) {
-        if (_stdOutWriter != null) // Console was opened
-            _stdOutWriter.WriteLine(l);
+        if (_consoleStdOutWriter != null) // Console was opened
+            _consoleStdOutWriter.WriteLine(l);
     }
     
     public static string rl(string _def="") {
-        if (_stdOutWriter != null) // Console was opened
+        if (_consoleStdOutWriter != null) // Console was opened
             return new StreamReader(Console.OpenStandardInput()).ReadLine();
         return _def;
     }
     
     public static string objPath(Transform t) {
-        string path = t.name;
+        string path = "/" + t.name; // "/" is the start path
         Transform parent = t.parent;
         while (parent != null) {
-            path = parent.name + "/" + path;
+            path = "/" + parent.name  + path;
             parent = parent.parent;
         }
         return path;
@@ -123,34 +149,43 @@ public static class messageBoardCtrlYonixwUtils  {
         clipboardExecutable.StartInfo = new ProcessStartInfo // Creates the process
         {
             RedirectStandardInput = true,
+            UseShellExecute = false,
             FileName = @"clip", 
         };
         clipboardExecutable.Start();
 
-        clipboardExecutable.StandardInput.Write(value); // CLIP uses STDIN as input.
+        clipboardExecutable.StandardInput.WriteLine(value); // CLIP uses STDIN as input.
         // When we are done writing all the string, close it so clip doesn't wait and get stuck
         clipboardExecutable.StandardInput.Close(); 
-
+        
+         clipboardExecutable.WaitForExit();
+         
         return;
     }
+    
+    
     
     public static void _LateUpdate(List<Text> line_list_)
     {
         if (_config == null)
         {
-            _config = messageBoardCtrlYonixwUtils.getConfig(
-                    messageBoardCtrlYonixwUtils.getConfigLines());
+            reloadConfig();
         }
+        
         if (Input.GetKeyUp(KeyCode.F4))
         {
             AllocConsole();
-            _stdOutWriter = new StreamWriter(Console.OpenStandardOutput());
-            _stdOutWriter.AutoFlush = true;
+            _consoleStdOutWriter = new StreamWriter(Console.OpenStandardOutput());
+            _consoleStdOutWriter.AutoFlush = true;
             l("[F4] Console Start! " + Time.deltaTime);
         }
         if (Input.GetKeyUp(KeyCode.F5))
         {
-            _config = getConfig(getConfigLines());
+            // To quick debug of configs, we tell to use 
+            // latest original text 
+            _reuse_cache = true; 
+            
+            reloadConfig();
             incRtlFlag();
             l("[F5] Refresh config! " + Time.deltaTime);
         }
@@ -163,8 +198,9 @@ public static class messageBoardCtrlYonixwUtils  {
             if (option == "0") {
                 l("[0] Help, all options:");
                 l("[1] dump 3 dialog lines");
-                l("[2] print dump all (active) UnityEngine.UI.Text");
-                l("[3] copy  dump all (active) UnityEngine.UI.Text");
+                l("[2] print dump all UnityEngine.UI.Text");
+                l("[3] copy  dump all UnityEngine.UI.Text");
+                l("[4] Save example config");
             }
             if (option == "1") {
                 l("[0]: " + line_list_[0].text);
@@ -173,8 +209,8 @@ public static class messageBoardCtrlYonixwUtils  {
             }
             if (option == "2" || option == "3") {
                 UnityEngine.UI.Text[] allTxts = 
-                    GameObject.FindObjectsOfType<UnityEngine.UI.Text>();
-                // including inactive: Resources.FindObjectsOfTypeAll<BaseClass>();
+                    Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
+                // active only GameObject.FindObjectsOfType<UnityEngine.UI.Text>();
                 string result = "";
                 int i = 0;
                 foreach(UnityEngine.UI.Text _t in allTxts) {
@@ -192,14 +228,49 @@ public static class messageBoardCtrlYonixwUtils  {
                     l("Copied to clipboard");
                     SetClipboard(result);
                 }
-            }            
+            } 
+            if (option == "4") {
+                saveExampleConfig();
+                l("Saved!");
+            }
+            
         }
         
-        foreach (Text text in line_list_)
+        // Update all
+        for (int i=0;i<_txt_cache.Length;i++) {
         {
-            if (!string.IsNullOrEmpty(text.text) && !text.text.StartsWith(_rtl_flag))
+            // Becaue we monitor and change the 
+            // Same text that is being changed by the game from
+            // other scripts,
+            // Our only way to detect change is if the rtl_flag
+            // is removed (or the text is empty). 
+            
+            Text text = _txt_cache[i];
+            bool noChange = 
+                string.IsNullOrEmpty(text.text) ||
+                text.text.StartsWith(_rtl_flag);
+            
+            
+            if (!noChange)
             {
-                text.text = _rtl_flag + fullregreplace(FixRTL(text.text), _config);
+                if (_reuse_cache) {
+                    _source_txt_cache[i] = text.text;
+                    _reuse_cache = false;
+                }
+                
+                if (_config.simpleTranslate.ContainsKey(_source_txt_cache[i])) {
+                    text.text = 
+                        _rtl_flag + 
+                        fullregreplace(FixRTL(
+                            _config.simpleTranslate[_source_txt_cache[i]]
+                        ));
+                }
+                else {
+                    text.text = 
+                        _rtl_flag + 
+                        fullregreplace(FixRTL(_source_txt_cache[i]));
+                }
+                
             }
         }
         
@@ -241,37 +312,91 @@ public static class messageBoardCtrlYonixwUtils  {
     
     // -------- Debug and replace for RTL
     
-    public static string[] getConfigLines() {
+    public static string getConfPath() {
         string assemblyFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        string txtPath = Path.Combine(assemblyFolder,"HE.Mod.Replace.txt");
-        string contents = File.ReadAllText(txtPath);
+        string txtPath = Path.Combine(assemblyFolder,"PW_AAT_RTL_MOD.xml");
+        return txtPath;
+    }
+    
+    public static string getConfigString() {
+        string contents = File.ReadAllText(getConfPath());
         if ( String.IsNullOrEmpty(contents) ) {
             contents = "";
         }
-        return contents.Split('\n');
+        return contents;
     }
 
-    public static List<string[]> getConfig(string[] lines) {
-        List<string[]> items = new List<string[]>();
-        foreach(string _line in lines) {
-            string line = _line.Trim();
-            int firstIndx = line.IndexOf("=>");
-            if (firstIndx > -1) {
-                string from = line.Substring(0,firstIndx);
-                string to = line.Substring(firstIndx+2);
-                items.Add(new string[] {from, to});
+
+    public static void resetConfigLocal() {
+        _txt_cache = 
+            new List<Text>(_config.unityUINameRegex.Length);
+        _source_txt_cache = 
+            new List<string>(_config.unityUINameRegex.Length);
+            
+        UnityEngine.UI.Text[] allTxts = 
+                    Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
+        List<string> allTxtsFullPath = 
+                    new Liste<string>();
+        
+        foreach (Text t in allTxts) {
+            allTxtsFullPath.Add(objPath(t));
+        }
+        for (int i=0;i<allTxtsFullPath.Length;i++) {
+            for (int j=0;j<_config.unityUINameRegex.Length;j++) {
+                if (
+                    new Regex(_config.unityUINameRegex[j])
+                    .Match(allTxtsFullPath[i])
+                    .Success
+                    ) {
+                    _txt_cache.Add(allTxts[i]);
+                    _txt_cache.Add(allTxts[i].text);
+                }
             }
         }
-        return items;
+        
+        // Simple (exact) replace dict populate
+        _simpleReplace = new Dictionary<string, string>();
+        for (int i=0;i<_config.simpleTranslate.Length;i++) {
+            _simpleReplace.Add(
+                _config.simpleTranslate[i].exact,
+                _config.simpleTranslate[i].replace);
+        }
+    }
+    
+    public static void reloadConfig() {        
+        XWConfig config = new XWConfig();
+        try {
+            string fileContent = getConfigString();
+            config = fromXML<XWConfig>(fileContent);
+        }
+        catch (Exception ex) {
+            l("Can't open file, empty config");
+        }
+        _config = config;
+        
+        resetConfigLocal()
+    }
+    
+    public static void saveExampleConfig() {
+        XWConfig c = new XWConfig();
+        c.replaces.Add(
+            new XWConfig.XWReplace() { regex = "\\(", replace = ")" } 
+        );
+        c.unityUINameRegex.Add("line\\d\\d");
+        c.simpleTranslate.Add(
+            new XWConfig.XWReplace() { regex = "Back", replace = "חזור" } 
+        );
+        
+        File.WriteAllText(getConfPath(),toXML(c));
     }
     
     public static string regreplace(string txt, string from, string to) {
         return Regex.Replace(txt, from, Regex.Unescape(to));
     }
 
-    public static string fullregreplace(string txt, List<string[]> conf) {
-        foreach (string[] pair in conf) {
-            txt = regreplace(txt,pair[0],pair[1]);
+    public static string fullregreplace(string txt) {
+        foreach (XWConfig.XWReplace pair in _config.replaces) {
+            txt = regreplace(txt,pair.regex,pair.replace);
         }
         return txt;
     }
