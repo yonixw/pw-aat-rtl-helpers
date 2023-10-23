@@ -67,7 +67,6 @@ public static class messageBoardCtrlYonixwUtils  {
     public static void incRtlFlag () {
             _rtl_i++;
             _rtl_flag = "<size=" + _rtl_i + "></size>";
-            _rtl_txt_cache = (new string[_rtl_txt_cache.Length]).ToList();
     }
     
     public static List<string> _source_txt_cache = new List<string>();
@@ -97,7 +96,7 @@ public static class messageBoardCtrlYonixwUtils  {
         public List<XWSimpleReplace> simpleTranslate = new List<XWSimpleReplace>();
     }
     
-    private Dictionary<string, string> _simpleReplace = 
+    private static Dictionary<string, string> _simpleReplace = 
             new Dictionary<string, string>();
     
     private static StreamWriter _consoleStdOutWriter;
@@ -237,7 +236,7 @@ public static class messageBoardCtrlYonixwUtils  {
         }
         
         // Update all
-        for (int i=0;i<_txt_cache.Length;i++) {
+        for (int i=0;i<_txt_cache.Count;i++) 
         {
             // Becaue we monitor and change the 
             // Same text that is being changed by the game from
@@ -258,11 +257,11 @@ public static class messageBoardCtrlYonixwUtils  {
                     _reuse_cache = false;
                 }
                 
-                if (_config.simpleTranslate.ContainsKey(_source_txt_cache[i])) {
+                if (_simpleReplace.ContainsKey(_source_txt_cache[i])) {
                     text.text = 
                         _rtl_flag + 
                         fullregreplace(FixRTL(
-                            _config.simpleTranslate[_source_txt_cache[i]]
+                            _simpleReplace[_source_txt_cache[i]]
                         ));
                 }
                 else {
@@ -329,34 +328,34 @@ public static class messageBoardCtrlYonixwUtils  {
 
     public static void resetConfigLocal() {
         _txt_cache = 
-            new List<Text>(_config.unityUINameRegex.Length);
+            new List<Text>(_config.unityUINameRegex.Count);
         _source_txt_cache = 
-            new List<string>(_config.unityUINameRegex.Length);
+            new List<string>(_config.unityUINameRegex.Count);
             
         UnityEngine.UI.Text[] allTxts = 
                     Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
         List<string> allTxtsFullPath = 
-                    new Liste<string>();
+                    new List<string>();
         
         foreach (Text t in allTxts) {
-            allTxtsFullPath.Add(objPath(t));
+            allTxtsFullPath.Add(objPath(t.transform));
         }
-        for (int i=0;i<allTxtsFullPath.Length;i++) {
-            for (int j=0;j<_config.unityUINameRegex.Length;j++) {
+        for (int i=0;i<allTxtsFullPath.Count;i++) {
+            for (int j=0;j<_config.unityUINameRegex.Count;j++) {
                 if (
                     new Regex(_config.unityUINameRegex[j])
                     .Match(allTxtsFullPath[i])
                     .Success
                     ) {
                     _txt_cache.Add(allTxts[i]);
-                    _txt_cache.Add(allTxts[i].text);
+                    _source_txt_cache.Add(allTxts[i].text);
                 }
             }
         }
         
         // Simple (exact) replace dict populate
         _simpleReplace = new Dictionary<string, string>();
-        for (int i=0;i<_config.simpleTranslate.Length;i++) {
+        for (int i=0;i<_config.simpleTranslate.Count;i++) {
             _simpleReplace.Add(
                 _config.simpleTranslate[i].exact,
                 _config.simpleTranslate[i].replace);
@@ -374,7 +373,7 @@ public static class messageBoardCtrlYonixwUtils  {
         }
         _config = config;
         
-        resetConfigLocal()
+        resetConfigLocal();
     }
     
     public static void saveExampleConfig() {
@@ -384,7 +383,7 @@ public static class messageBoardCtrlYonixwUtils  {
         );
         c.unityUINameRegex.Add("line\\d\\d");
         c.simpleTranslate.Add(
-            new XWConfig.XWReplace() { regex = "Back", replace = "חזור" } 
+            new XWConfig.XWSimpleReplace() { exact = "Back", replace = "חזור" } 
         );
         
         File.WriteAllText(getConfPath(),toXML(c));
