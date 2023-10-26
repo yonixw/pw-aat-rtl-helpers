@@ -24,13 +24,8 @@ using UnityEngine.SceneManagement;
 
 // Todo:
 
-// Get all tags and their meaning?
+// Get all AAT tags and their meaning?
 
-// Allow refresh line with new regex (need to save cache)
-    // Refresh
-// Allow show meta (position?) of labels
-
-// Fix center by '##1'...?
 // Print all files as they are loaded (where to inject?...)
     // Load in any scene:
         // https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
@@ -62,14 +57,13 @@ public static class messageBoardCtrlYonixwUtils  {
     private static extern bool AllocConsole(); // Win Only
     
     public static int _rtl_i = 1;
-    public static string _rtl_flag = "<size=1></size>";
+    public static string _rtl_flag = "<size=1></size><size=1></size>";
     
     public static void incRtlFlag () {
             _rtl_i++;
-            _rtl_flag = "<size=" + _rtl_i + "></size>";
+            _rtl_flag = "<size=1></size><size=" + _rtl_i + "></size>";
     }
     
-    public static List<string> _source_txt_cache = new List<string>();
     public static List<Text> _txt_cache = new List<Text>();
     public static bool _reuse_cache = false;
     
@@ -94,6 +88,8 @@ public static class messageBoardCtrlYonixwUtils  {
         }
         
         public List<XWSimpleReplace> simpleTranslate = new List<XWSimpleReplace>();
+
+        public bool openDebugConsole = false;
     }
     
     private static Dictionary<string, string> _simpleReplace = 
@@ -161,8 +157,15 @@ public static class messageBoardCtrlYonixwUtils  {
          
         return;
     }
-    
-    
+
+    public static bool _console_open = false;
+    public static void OpenConsole() {
+        if (_console_open) return;
+        AllocConsole();
+        _consoleStdOutWriter = new StreamWriter(Console.OpenStandardOutput());
+        _consoleStdOutWriter.AutoFlush = true;
+        _console_open = true;
+    }
     
     public static void _LateUpdate(List<Text> line_list_)
     {
@@ -173,9 +176,7 @@ public static class messageBoardCtrlYonixwUtils  {
         
         if (Input.GetKeyUp(KeyCode.F4))
         {
-            AllocConsole();
-            _consoleStdOutWriter = new StreamWriter(Console.OpenStandardOutput());
-            _consoleStdOutWriter.AutoFlush = true;
+            OpenConsole();
             l("[F4] Console Start! " + Time.deltaTime);
         }
         if (Input.GetKeyUp(KeyCode.F5))
@@ -186,30 +187,37 @@ public static class messageBoardCtrlYonixwUtils  {
             
             reloadConfig();
             incRtlFlag();
-            l("[F5] Refresh config! " + Time.deltaTime);
+            l("[F5] Refreshed config! " + Time.deltaTime);
         }
         if (Input.GetKeyUp(KeyCode.F6))
         {
-            l("[F6] Waiting, Enter option, [0] Help, [empty] to continure");
+            l("[F6] Waiting, Enter option, [H] Help, [empty] to continure");
             string option = rl();
             l("[F6] Got option: " + option);
             
-            if (option == "0") {
-                l("[0] Help, all options:");
+            if (option == "H") {
+                l("[H] Help, all options:");
+                l("[0] Clear console");
                 l("[1] dump 3 dialog lines");
-                l("[2] print dump all UnityEngine.UI.Text");
-                l("[3] copy  dump all UnityEngine.UI.Text");
+                l("[2] print dump all UnityEngine.UI.Text in scene");
+                l("[3] clipboard  dump all UnityEngine.UI.Text in scene");
                 l("[4] Save example config");
+                l("[5] print dump all monitored UI.Text from config");
+                l("[6] clipboard dump all monitored UI.Text from config");
+            }
+            if (option == "0") {
+                Console.Clear(); 
             }
             if (option == "1") {
-                l("[0]: " + line_list_[0].text);
-                l("[1]: " + line_list_[1].text);
-                l("[2]: " + line_list_[2].text);
+                l("[line 0]: " + line_list_[0].text);
+                l("[line 1]: " + line_list_[1].text);
+                l("[line 2]: " + line_list_[2].text);
             }
             if (option == "2" || option == "3") {
                 UnityEngine.UI.Text[] allTxts = 
                     Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
-                // active only GameObject.FindObjectsOfType<UnityEngine.UI.Text>();
+                    //GameObject.FindObjectsOfType<UnityEngine.UI.Text>();
+                    //Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
                 string result = "";
                 int i = 0;
                 foreach(UnityEngine.UI.Text _t in allTxts) {
@@ -232,6 +240,27 @@ public static class messageBoardCtrlYonixwUtils  {
                 saveExampleConfig();
                 l("Saved!");
             }
+            if (option == "5" || option == "6") {
+                string result = "";
+                for (int i=0;i<_txt_cache.Count;i++) 
+                {
+                    Text _t = _txt_cache[i];
+                    result += "(" + i + ")" + "\n";
+                    i++;
+                    
+                    result += "[Path] " + objPath(_t.transform) + "\n";
+                    result += "[Text] " + _t.text + "\n";
+                    
+                }
+
+                if (option == "5") {
+                    l(result);
+                }
+                if (option == "6") {
+                    l("Copied to clipboard");
+                    SetClipboard(result);
+                }
+            }
             
         }
         
@@ -243,39 +272,65 @@ public static class messageBoardCtrlYonixwUtils  {
             // other scripts,
             // Our only way to detect change is if the rtl_flag
             // is removed (or the text is empty). 
+            // Also, because "typewriter" animation, it will change every 
+            // char ("H"->"He"--->"Hello...")
+            //      added with '+=' so prefix might not work?
             
             Text text = _txt_cache[i];
+            string _TXT = text.text;
+
             bool noChange = 
-                string.IsNullOrEmpty(text.text) ||
-                text.text.StartsWith(_rtl_flag);
-            
+                string.IsNullOrEmpty(_TXT) ||
+                _TXT.StartsWith(_rtl_flag);
             
             if (!noChange)
             {
-                if (_reuse_cache) {
-                    _source_txt_cache[i] = text.text;
-                    _reuse_cache = false;
+                 if (_simpleReplace.ContainsKey(_TXT)) {
+                    _TXT = _simpleReplace[_TXT];
                 }
                 
-                if (_simpleReplace.ContainsKey(_source_txt_cache[i])) {
-                    text.text = 
-                        _rtl_flag + 
-                        fullregreplace(FixRTL(
-                            _simpleReplace[_source_txt_cache[i]]
-                        ));
+                text.alignment = TextAnchor.MiddleRight; // Todo, based on '##0' ...
+                if       (_TXT.Contains(" #1# ")) {
+                    _TXT = _TXT.Replace(" #1# ","");
+                    text.alignment = TextAnchor.UpperLeft;
+                } else if (_TXT.Contains(" #2# ")) {
+                    _TXT = _TXT.Replace(" #2# ","");
+                    text.alignment = TextAnchor.UpperCenter;
+                } else if (_TXT.Contains(" #3# ")) {
+                    _TXT = _TXT.Replace(" #3# ","");
+                    text.alignment = TextAnchor.UpperRight;
+                } else if (_TXT.Contains(" #4# ")) {
+                    _TXT = _TXT.Replace(" #4# ","");
+                    text.alignment = TextAnchor.MiddleLeft;
+                } else if (_TXT.Contains(" #5# ")) {
+                    _TXT = _TXT.Replace(" #5# ","");
+                    text.alignment = TextAnchor.MiddleCenter;
+                } else if (_TXT.Contains(" #6# ")) {
+                    _TXT = _TXT.Replace(" #6# ","");
+                    text.alignment = TextAnchor.MiddleRight;
+                } else if (_TXT.Contains(" #7# ")) {
+                    _TXT = _TXT.Replace(" #7# ","");
+                    text.alignment = TextAnchor.LowerLeft;
+                } else if (_TXT.Contains(" #8# ")) {
+                    _TXT = _TXT.Replace(" #8# ","");
+                    text.alignment = TextAnchor.LowerCenter;
+                } else if (_TXT.Contains(" #9# ")) {
+                    _TXT = _TXT.Replace(" #9# ","");
+                    text.alignment = TextAnchor.LowerRight;
                 }
-                else {
-                    text.text = 
+
+                text.text = 
                         _rtl_flag + 
-                        fullregreplace(FixRTL(_source_txt_cache[i]));
-                }
-                
+                        fullregreplace(FixRTL(_TXT));
             }
         }
         
     }
 
     // -------- Smart RTL reverse without tag reverse
+
+    // "22:22", "01/02/23", "1,000.55", "1,000", "44.55",
+    public static Regex numberWords = new Regex("^\\d[/\\d:\\.\\,\\\\]*\\d+$");
 
     public static string WordReverser(System.Text.RegularExpressions.Match match)
     {
@@ -288,9 +343,20 @@ public static class messageBoardCtrlYonixwUtils  {
         bool hasStartTagNxt = val.EndsWith("<");
         if (hasStartTagNxt) val = val.Substring(0, val.Length - 1);
 
-        char[] _txt = val.ToCharArray();
-        Array.Reverse(_txt);
-        string result = new string(_txt);
+        string[] words = val.Split(' ');
+        for (int i=0;i<words.Length;i++) {
+            if (!numberWords.Match(words[i]).Success) {
+                continue; // Skip no number words, so it will double reverse
+            }
+            char[] _txt = words[i].ToCharArray();
+            Array.Reverse(_txt);
+            words[i] =  new string(_txt);
+        }
+        
+        string result = string.Join(" ", words);
+        char[] _txt2 = result.ToCharArray();
+        Array.Reverse(_txt2);
+        result = new string(_txt2);
         
         if (hasEndTagPrev) result = ">" + result;
         if (hasStartTagNxt) result =  result + "<";
@@ -299,13 +365,13 @@ public static class messageBoardCtrlYonixwUtils  {
       }
       return "[" + match.Value + "]";
     }
-    
-    public static string FixRTL(string data) {
-       string pattern = @"(^|>)([^><]+)(<|$)";   
-       System.Text.RegularExpressions.MatchEvaluator evaluator = 
+
+    public static System.Text.RegularExpressions.MatchEvaluator insideTagEvaluator = 
             new System.Text.RegularExpressions.MatchEvaluator(WordReverser);
+    public static string insideTagPattern = @"(^|>)([^><]+)(<|$)";   
+    public static string FixRTL(string data) {
         return System.Text.RegularExpressions.Regex.Replace(
-            data, pattern, evaluator
+            data, insideTagPattern, insideTagEvaluator
         );
     }
     
@@ -329,26 +395,28 @@ public static class messageBoardCtrlYonixwUtils  {
     public static void resetConfigLocal() {
         _txt_cache = 
             new List<Text>(_config.unityUINameRegex.Count);
-        _source_txt_cache = 
-            new List<string>(_config.unityUINameRegex.Count);
             
         UnityEngine.UI.Text[] allTxts = 
-                    Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
+                Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
         List<string> allTxtsFullPath = 
                     new List<string>();
         
         foreach (Text t in allTxts) {
             allTxtsFullPath.Add(objPath(t.transform));
         }
-        for (int i=0;i<allTxtsFullPath.Count;i++) {
-            for (int j=0;j<_config.unityUINameRegex.Count;j++) {
+
+        l("Start add UI Text");
+        for (int j=0;j<_config.unityUINameRegex.Count;j++) {
+            l("[*] Filter: " + _config.unityUINameRegex[j].ToLower() );
+            for (int i=0;i<allTxtsFullPath.Count;i++) {
                 if (
-                    new Regex(_config.unityUINameRegex[j])
-                    .Match(allTxtsFullPath[i])
-                    .Success
+                    allTxtsFullPath[i].ToLower().Contains(_config.unityUINameRegex[j].ToLower())
+                    //new Regex().Match().Success
                     ) {
+                    
                     _txt_cache.Add(allTxts[i]);
-                    _source_txt_cache.Add(allTxts[i].text);
+                    l("[***] Added: " + allTxtsFullPath[i].ToLower() );
+                    l("[***] Start Alignment: " + allTxts[i].alignment.ToString() );
                 }
             }
         }
@@ -372,6 +440,11 @@ public static class messageBoardCtrlYonixwUtils  {
             l("Can't open file, empty config");
         }
         _config = config;
+
+        if (_config.openDebugConsole) {
+            OpenConsole();
+            l("Console open because config, F5-Refresh, F6-Actions");
+        }
         
         resetConfigLocal();
     }
@@ -381,16 +454,18 @@ public static class messageBoardCtrlYonixwUtils  {
         c.replaces.Add(
             new XWConfig.XWReplace() { regex = "\\(", replace = ")" } 
         );
-        c.unityUINameRegex.Add("line\\d\\d");
+        c.unityUINameRegex.Add("line");
         c.simpleTranslate.Add(
             new XWConfig.XWSimpleReplace() { exact = "Back", replace = "חזור" } 
         );
+        c.openDebugConsole = true;
         
         File.WriteAllText(getConfPath(),toXML(c));
     }
     
     public static string regreplace(string txt, string from, string to) {
-        return Regex.Replace(txt, from, Regex.Unescape(to));
+        //return Regex.Replace(txt, from, Regex.Unescape(to));
+        return txt.Replace(from,to);
     }
 
     public static string fullregreplace(string txt) {
