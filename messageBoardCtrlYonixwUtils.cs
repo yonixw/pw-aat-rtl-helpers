@@ -453,7 +453,7 @@ public static class messageBoardCtrlYonixwUtils  {
     public static void saveExampleConfig() {
         XWConfig c = new XWConfig();
         c.replaces.Add(
-            new XWConfig.XWReplace() { regex = "\\(", replace = ")" } 
+            new XWConfig.XWReplace() { regex = "(", replace = ")" } 
         );
         c.unityUINameRegex.Add("line");
         c.simpleTranslate.Add(
