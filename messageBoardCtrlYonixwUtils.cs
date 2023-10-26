@@ -29,7 +29,11 @@ using UnityEngine.SceneManagement;
 // Print all files as they are loaded (where to inject?...)
     // Load in any scene:
         // https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
-        
+
+// Simple 1..0..1 for alignment
+
+// Color need tags reverse for RTL ... but there are 2 tags - open and not open...
+
 /*
 public partial class messageBoardCtrl : MonoBehaviour
 {
@@ -272,9 +276,6 @@ public static class messageBoardCtrlYonixwUtils  {
             // other scripts,
             // Our only way to detect change is if the rtl_flag
             // is removed (or the text is empty). 
-            // Also, because "typewriter" animation, it will change every 
-            // char ("H"->"He"--->"Hello...")
-            //      added with '+=' so prefix might not work?
             
             Text text = _txt_cache[i];
             string _TXT = text.text;
@@ -289,7 +290,7 @@ public static class messageBoardCtrlYonixwUtils  {
                     _TXT = _simpleReplace[_TXT];
                 }
                 
-                text.alignment = TextAnchor.MiddleRight; // Todo, based on '##0' ...
+                text.alignment = TextAnchor.MiddleRight; // Todo, based on '##0' or based on Name?
                 if       (_TXT.Contains(" #1# ")) {
                     _TXT = _TXT.Replace(" #1# ","");
                     text.alignment = TextAnchor.UpperLeft;
