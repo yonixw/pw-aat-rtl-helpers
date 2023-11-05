@@ -22,7 +22,7 @@ using UnityEngine.SceneManagement;
     SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
 */
 
-// Todo:
+// Todo :
 
 // Get all AAT tags and their meaning?
 
@@ -30,11 +30,21 @@ using UnityEngine.SceneManagement;
     // Load in any scene:
         // https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
 
-// Simple 1..0..1 for alignment
-
 // Color need tags reverse for RTL ... but there are 2 tags - open and not open...
 
+// TODO round2: 
+//      Fast way to encode from txt to file... (need c# cli for encoding software..)
+
 /*
+
+public partial class decryptionCtrl : MonoBehaviour
+{
+	public byte[] load(string in_path)
+	{
+		messageBoardCtrlYonixwUtils.l("[L] Loading file: " + in_path);
+
+..
+
 public partial class messageBoardCtrl : MonoBehaviour
 {
     public void LateUpdate()
@@ -44,7 +54,7 @@ public partial class messageBoardCtrl : MonoBehaviour
     
     public void load()
     {
-        // ....
+        ....
         foreach (Text text in this.line_list_)
             {
                 mainCtrl.instance.addText(text);
@@ -94,6 +104,8 @@ public static class messageBoardCtrlYonixwUtils  {
         public List<XWSimpleReplace> simpleTranslate = new List<XWSimpleReplace>();
 
         public bool openDebugConsole = false;
+
+        public List<string> debugLines = new List<string>();
     }
     
     private static Dictionary<string, string> _simpleReplace = 
@@ -144,20 +156,30 @@ public static class messageBoardCtrlYonixwUtils  {
     
     public static void SetClipboard(string value)
     {
-        Process clipboardExecutable = new Process(); 
-        clipboardExecutable.StartInfo = new ProcessStartInfo // Creates the process
+        Process clipProc = new Process(); 
+        clipProc.StartInfo = new ProcessStartInfo // Creates the process
         {
             RedirectStandardInput = true,
             UseShellExecute = false,
             FileName = @"clip", 
         };
-        clipboardExecutable.Start();
+        clipProc.Start();
 
-        clipboardExecutable.StandardInput.WriteLine(value); // CLIP uses STDIN as input.
+        // UTF16 that clip wants
+        //      For specifiec stuff Encoding.GetEncoding(1255);
+        System.Text.Encoding txtEncoding =  System.Text.Encoding.Unicode;
+        StreamWriter streamWriter = new StreamWriter(clipProc.StandardInput.BaseStream, txtEncoding);
+        streamWriter.WriteLine(value);
         // When we are done writing all the string, close it so clip doesn't wait and get stuck
-        clipboardExecutable.StandardInput.Close(); 
+        streamWriter.Close();
+
+        // -- Old english only way --
+        //clipProc.StandardInput.WriteLine(value); // CLIP uses STDIN as input.
+        // When we are done writing all the string, close it so clip doesn't wait and get stuck
+        //clipProc.StandardInput.Close(); 
+        // -------------------------
         
-         clipboardExecutable.WaitForExit();
+        clipProc.WaitForExit();
          
         return;
     }
@@ -283,41 +305,41 @@ public static class messageBoardCtrlYonixwUtils  {
             bool noChange = 
                 string.IsNullOrEmpty(_TXT) ||
                 _TXT.StartsWith(_rtl_flag);
+
             
             if (!noChange)
             {
+                if (_config.debugLines.Count > 0) {
+                    int _dbg_i = line_list_.IndexOf(text);
+                    if (_dbg_i>-1 && _dbg_i < _config.debugLines.Count) {
+                        _TXT = _config.debugLines[_dbg_i];
+                    }
+                }
+                
                  if (_simpleReplace.ContainsKey(_TXT)) {
                     _TXT = _simpleReplace[_TXT];
                 }
                 
-                text.alignment = TextAnchor.MiddleRight; // Todo, based on '##0' or based on Name?
-                if       (_TXT.Contains(" #1# ")) {
-                    _TXT = _TXT.Replace(" #1# ","");
-                    text.alignment = TextAnchor.UpperLeft;
-                } else if (_TXT.Contains(" #2# ")) {
-                    _TXT = _TXT.Replace(" #2# ","");
-                    text.alignment = TextAnchor.UpperCenter;
-                } else if (_TXT.Contains(" #3# ")) {
-                    _TXT = _TXT.Replace(" #3# ","");
-                    text.alignment = TextAnchor.UpperRight;
-                } else if (_TXT.Contains(" #4# ")) {
-                    _TXT = _TXT.Replace(" #4# ","");
-                    text.alignment = TextAnchor.MiddleLeft;
-                } else if (_TXT.Contains(" #5# ")) {
-                    _TXT = _TXT.Replace(" #5# ","");
-                    text.alignment = TextAnchor.MiddleCenter;
-                } else if (_TXT.Contains(" #6# ")) {
-                    _TXT = _TXT.Replace(" #6# ","");
-                    text.alignment = TextAnchor.MiddleRight;
-                } else if (_TXT.Contains(" #7# ")) {
-                    _TXT = _TXT.Replace(" #7# ","");
-                    text.alignment = TextAnchor.LowerLeft;
-                } else if (_TXT.Contains(" #8# ")) {
-                    _TXT = _TXT.Replace(" #8# ","");
-                    text.alignment = TextAnchor.LowerCenter;
-                } else if (_TXT.Contains(" #9# ")) {
-                    _TXT = _TXT.Replace(" #9# ","");
-                    text.alignment = TextAnchor.LowerRight;
+                const string prefixAlign = " ף";
+                const string postfixAlign = "ף ";
+                if (_TXT.IndexOf(prefixAlign) > -1) {
+                    string alignCode = findCustomCode(_TXT,prefixAlign,postfixAlign);
+
+                    if (alignCode != "") {
+                        _TXT = _TXT
+                            .Replace(prefixAlign + alignCode + postfixAlign,"");
+                        if (uiAlignEnum.ContainsKey(alignCode)) {
+                            text.alignment = uiAlignEnum[alignCode];
+                        }
+                    }
+                    else {
+                        // Hide the text until the typing effect will finish the full custom code "ף{num}ף"
+                        _TXT = _TXT
+                            .Replace(prefixAlign,"<size=0>") + "</size>";
+                    }
+                }
+                else {
+                    text.alignment = TextAnchor.MiddleRight; // Allow exception by Name?
                 }
 
                 text.text = 
@@ -326,6 +348,32 @@ public static class messageBoardCtrlYonixwUtils  {
             }
         }
         
+    }
+
+    public static Dictionary<string, TextAnchor> uiAlignEnum = new Dictionary<string, TextAnchor>() {
+        {"1",TextAnchor.UpperLeft},
+        {"2",TextAnchor.UpperCenter},
+        {"3",TextAnchor.UpperRight},
+        {"4",TextAnchor.MiddleLeft},
+        {"5",TextAnchor.MiddleCenter},
+        {"6",TextAnchor.MiddleRight}, // Default in our code
+        {"7",TextAnchor.LowerLeft},
+        {"8",TextAnchor.LowerCenter},
+        {"9",TextAnchor.LowerRight}
+    };
+
+    public static string findCustomCode(string txt, string prefix, string postfix) {
+        int start = txt.IndexOf(prefix);
+        if (start == -1) return "";
+
+        int last = txt.IndexOf(postfix,start+1);
+        if (start > -1 && last > -1 && last > start +  +1) {
+            start += prefix.Length;
+            return txt.Substring(start, last - start );
+        }
+        else {
+            return ""; // not found
+        }
     }
 
     // -------- Smart RTL reverse without tag reverse
