@@ -24,16 +24,9 @@ using UnityEngine.SceneManagement;
 
 // Todo :
 
-// Get all AAT tags and their meaning?
-
-// Print all files as they are loaded (where to inject?...)
-    // Load in any scene:
-        // https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
-
-// Color need tags reverse for RTL ... but there are 2 tags - open and not open...
-
-// TODO round2: 
+// TODO round3: 
 //      Fast way to encode from txt to file... (need c# cli for encoding software..)
+//      Get all AAT tags and their meanings? for a custom UI editor?
 
 /*
 
