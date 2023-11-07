@@ -344,7 +344,7 @@ public static class messageBoardCtrlYonixwUtils  {
 
                 text.text = 
                         _rtl_flag + 
-                        fullregreplace(FixRTL(_TXT));
+                        fullregreplace(YonixwRTLReverser.RTLFix(_TXT));
             }
         }
         
@@ -376,54 +376,6 @@ public static class messageBoardCtrlYonixwUtils  {
         }
     }
 
-    // -------- Smart RTL reverse without tag reverse
-
-    // "22:22", "01/02/23", "1,000.55", "1,000", "44.55",
-    public static Regex numberWords = new Regex("^\\d[/\\d:\\.\\,\\\\]*\\d+$");
-
-    public static string WordReverser(System.Text.RegularExpressions.Match match)
-    {
-      if (match.Value.Length > 0 ) {
-        string val = match.Value;
-        
-        bool hasEndTagPrev = val.StartsWith(">");
-        if (hasEndTagPrev) val = val.Substring(1);
-        
-        bool hasStartTagNxt = val.EndsWith("<");
-        if (hasStartTagNxt) val = val.Substring(0, val.Length - 1);
-
-        string[] words = val.Split(' ');
-        for (int i=0;i<words.Length;i++) {
-            if (!numberWords.Match(words[i]).Success) {
-                continue; // Skip no number words, so it will double reverse
-            }
-            char[] _txt = words[i].ToCharArray();
-            Array.Reverse(_txt);
-            words[i] =  new string(_txt);
-        }
-        
-        string result = string.Join(" ", words);
-        char[] _txt2 = result.ToCharArray();
-        Array.Reverse(_txt2);
-        result = new string(_txt2);
-        
-        if (hasEndTagPrev) result = ">" + result;
-        if (hasStartTagNxt) result =  result + "<";
-        
-        return result;
-      }
-      return "[" + match.Value + "]";
-    }
-
-    public static System.Text.RegularExpressions.MatchEvaluator insideTagEvaluator = 
-            new System.Text.RegularExpressions.MatchEvaluator(WordReverser);
-    public static string insideTagPattern = @"(^|>)([^><]+)(<|$)";   
-    public static string FixRTL(string data) {
-        return System.Text.RegularExpressions.Regex.Replace(
-            data, insideTagPattern, insideTagEvaluator
-        );
-    }
-    
     // -------- Debug and replace for RTL
     
     public static string getConfPath() {
