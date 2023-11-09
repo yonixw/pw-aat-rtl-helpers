@@ -24,15 +24,10 @@ using UnityEngine.SceneManagement;
 
 // Todo :
 
-// Get all AAT tags and their meaning?
 
-// Print all files as they are loaded (where to inject?...)
-// Load in any scene:
-// https://docs.unity3d.com/ScriptReference/RuntimeInitializeOnLoadMethodAttribute.html
-
-// Color need tags reverse for RTL ... but there are 2 tags - open and not open...
 
 // TODO round2: 
+//      Get all AAT tags and their meaning? Inside code? A maze...
 //      Fast way to encode from txt to file... (need c# cli for encoding software..)
 
 /*
@@ -60,6 +55,8 @@ public partial class messageBoardCtrl : MonoBehaviour
                 mainCtrl.instance.addText(text);
                 text.alignment = TextAnchor.MiddleRight;
             }
+
+        messageBoardCtrlYonixwUtils._config = null; // To reset between scene load/save
     }
 }
 */
@@ -109,6 +106,8 @@ public static class messageBoardCtrlYonixwUtils
         public List<XWSimpleReplace> simpleTranslate = new List<XWSimpleReplace>();
 
         public bool openDebugConsole = false;
+
+        public bool skipInvNumbers = false;
 
         public List<string> debugLines = new List<string>();
     }
@@ -208,7 +207,7 @@ public static class messageBoardCtrlYonixwUtils
     {
         if (_config == null)
         {
-            reloadConfig();
+            reloadConfig(); // Slow if console is open
         }
 
         if (Input.GetKeyUp(KeyCode.F4))
@@ -517,9 +516,6 @@ public static class messageBoardCtrlYonixwUtils
 
     public static void reloadConfig()
     {
-        // To avoid first sound lagging behind
-        // Until config loaded. Animation already stopped because gameloop stuck
-        AudioListener.pause = true;
 
         XWConfig config = new XWConfig();
         try
@@ -540,8 +536,6 @@ public static class messageBoardCtrlYonixwUtils
         }
 
         resetConfigLocal();
-
-        AudioListener.pause = false;
 
     }
 

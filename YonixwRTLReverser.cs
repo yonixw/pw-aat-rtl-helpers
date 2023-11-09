@@ -9,7 +9,9 @@ public static class YonixwRTLReverser
 
 	public static string processWord(string word)
 	{
-		if (numberWords.Match(word).Success)
+		if (messageBoardCtrlYonixwUtils._config != null
+			&& messageBoardCtrlYonixwUtils._config.skipInvNumbers &&
+			numberWords.Match(word).Success)
 		{
 			return word;
 		}
