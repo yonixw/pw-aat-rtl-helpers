@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-16"?>
+<XWConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <openDebugConsole>true</openDebugConsole>
+  <debugLines>
+    <!-- Empty to ignore -->
+    <!-- Use https://www.freeformatter.com/xml-escape.html for any text -->
+    <!--
+    <string>~5~MiddleCenter באמצע</string> 
+    <string></string>
+    <string>123אבג</string>
+    -->
+  </debugLines>
+  <!-- UI Align: use with "~{num}~" like "~5~" 
+    1  UpperLeft   
+    2  UpperCenter 
+    3  UpperRight  
+    4  MiddleLeft  
+    5  MiddleCenter
+    6  MiddleRight // Default for dialog lines
+    7  LowerLeft   
+    8  LowerCenter 
+    9  LowerRight  
+  -->
+  <replaces> <!-- Not regex... Simple... -->
+    <XWReplace>
+      <regex>(</regex>
+      <replace>!var1</replace> <!-- Need random, to not be replaced by next rule -->
+    </XWReplace>
+    <XWReplace>
+      <regex>)</regex>
+      <replace>(</replace>
+    </XWReplace>
+    <XWReplace>
+      <regex>!var1</regex>
+      <replace>)</replace>
+    </XWReplace>
+  </replaces>
+  <unityUINameRegex>
+    <string>/line</string> <!-- dialog lines  -->
+    <string>/symbol</string> <!-- setting lines  -->
+    <string>board/Canvas/name</string> <!-- Court Items header  -->
+    <string>selectPlate(Clone)/body/select</string> <!-- 3 choises -->
+  </unityUINameRegex>
+  <simpleTranslate>
+    <XWSimpleReplace>
+      <exact>Back</exact>
+      <replace>~4~חזור</replace>
+    </XWSimpleReplace>
+    <XWSimpleReplace>
+      <exact>Options</exact>
+      <replace>~4~הגדרות</replace>
+    </XWSimpleReplace>
+    <XWSimpleReplace>
+      <exact>Default</exact>
+      <replace>~4~אפס</replace>
+    </XWSimpleReplace>
+    <XWSimpleReplace>
+      <exact>Mia Fey</exact>
+      <replace>מיה פיי</replace>
+    </XWSimpleReplace>
+  </simpleTranslate>
+</XWConfig>
