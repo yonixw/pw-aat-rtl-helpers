@@ -42,7 +42,7 @@ public static class YonixwRTLReverser
 		// TODO: alternative of Regex just finding first group of "^[^a-zA-Z](a-zA-Z)"
 		string openTag = open.Split(tagSplit, StringSplitOptions.RemoveEmptyEntries)[0];
 		string closeTag = close.Split(tagSplit, StringSplitOptions.RemoveEmptyEntries)[0];
-		Console.WriteLine(openTag + " =? " + closeTag);
+		//Console.WriteLine(openTag + " =? " + closeTag);
 		return openTag == closeTag;
 	}
 

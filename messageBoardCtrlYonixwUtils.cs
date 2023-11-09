@@ -78,7 +78,6 @@ public static class messageBoardCtrlYonixwUtils
     }
 
     public static List<Text> _txt_cache = new List<Text>();
-    public static bool _reuse_cache = false;
 
     public static XWConfig _config = null;
 
@@ -207,7 +206,7 @@ public static class messageBoardCtrlYonixwUtils
     {
         if (_config == null)
         {
-            reloadConfig(); // Slow if console is open
+            reloadConfig(true); // Slow if console is open
         }
 
         if (Input.GetKeyUp(KeyCode.F4))
@@ -217,11 +216,8 @@ public static class messageBoardCtrlYonixwUtils
         }
         if (Input.GetKeyUp(KeyCode.F5))
         {
-            // To quick debug of configs, we tell to use 
-            // latest original text 
-            _reuse_cache = true;
 
-            reloadConfig();
+            reloadConfig(false);
             incRtlFlag();
             l("[F5] Refreshed config! " + Time.deltaTime);
         }
@@ -291,7 +287,6 @@ public static class messageBoardCtrlYonixwUtils
                 {
                     Text _t = _txt_cache[i];
                     result += "(" + i + ")" + "\n";
-                    i++;
 
                     result += "[Path] " + objPath(_t.transform) + "\n";
                     result += "[Text] " + _t.text + "\n";
@@ -311,9 +306,41 @@ public static class messageBoardCtrlYonixwUtils
 
         }
 
-        // Update all
+        // Add Texts that was created or active after scene start
+        for (int i = 0; i < YonixwUnityUITools.Added.Count; i++)
+        {
+            for (int j = 0; j < _config.unityUINameRegex.Count; j++)
+            {
+                if (
+                    YonixwUnityUITools.FullNames[i]
+                        .ToLower()
+                        .Contains(_config.unityUINameRegex[j]
+                        .ToLower()
+                     )
+                    )
+                {
+
+                    _txt_cache.Add(YonixwUnityUITools.Added[i]);
+                    l("[*] Filter: " + _config.unityUINameRegex[j].ToLower());
+                    l("[***] Added: " + YonixwUnityUITools.FullNames[i].ToLower());
+                    l("[***] Start Alignment: " + YonixwUnityUITools.Added[i].alignment.ToString());
+                }
+            }
+        }
+        // Clear Dynamic added:
+        if (YonixwUnityUITools.Added.Count > 0)
+        {
+            YonixwUnityUITools.clear();
+        }
+
         for (int i = 0; i < _txt_cache.Count; i++)
         {
+            if (i >= _txt_cache.Count)
+            {
+                // Becaue we remove stuff mid loop
+                break;
+            }
+
             // Becaue we monitor and change the 
             // Same text that is being changed by the game from
             // other scripts,
@@ -321,6 +348,13 @@ public static class messageBoardCtrlYonixwUtils
             // is removed (or the text is empty). 
 
             Text text = _txt_cache[i];
+            if (text == null || text.IsDestroyed() || !text.IsActive())
+            {
+                _txt_cache.RemoveAt(i);
+                i--;
+                continue;
+            }
+
             string _TXT = text.text;
 
             bool noChange =
@@ -468,38 +502,51 @@ public static class messageBoardCtrlYonixwUtils
     }
 
 
-    public static void resetConfigLocal()
+    public static void resetConfigLocal(bool firstNull)
     {
 
 
-        _txt_cache =
-            new List<Text>(_config.unityUINameRegex.Count);
-
-        UnityEngine.UI.Text[] allTxts =
-                Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
-        List<string> allTxtsFullPath =
-                    new List<string>();
-
-        foreach (Text t in allTxts)
+        if (!firstNull)
         {
-            allTxtsFullPath.Add(objPath(t.transform));
-        }
+            _txt_cache = new List<Text>(_config.unityUINameRegex.Count);
 
-        l("Start add UI Text");
-        for (int j = 0; j < _config.unityUINameRegex.Count; j++)
-        {
-            l("[*] Filter: " + _config.unityUINameRegex[j].ToLower());
-            for (int i = 0; i < allTxtsFullPath.Count; i++)
+            UnityEngine.UI.Text[] allTxts =
+                    Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>();
+            List<string> allTxtsFullPath =
+                        new List<string>();
+
+            for (int i = 0; i < allTxts.Length; i++)
             {
-                if (
-                    allTxtsFullPath[i].ToLower().Contains(_config.unityUINameRegex[j].ToLower())
-                    //new Regex().Match().Success
-                    )
+                Text text = allTxts[i];
+                if (text == null || text.IsDestroyed() || !text.IsActive())
                 {
+                    allTxts[i] = null;
+                    allTxtsFullPath.Add("");
+                    // UnityUI will monitor it when it will become active
+                }
+                else
+                {
+                    allTxtsFullPath.Add(objPath(text.transform));
+                }
+            }
 
-                    _txt_cache.Add(allTxts[i]);
-                    l("[***] Added: " + allTxtsFullPath[i].ToLower());
-                    l("[***] Start Alignment: " + allTxts[i].alignment.ToString());
+            l("Start add UI Text");
+            for (int j = 0; j < _config.unityUINameRegex.Count; j++)
+            {
+                l("[*] Filter: " + _config.unityUINameRegex[j].ToLower());
+                for (int i = 0; i < allTxtsFullPath.Count; i++)
+                {
+                    if (allTxtsFullPath[i] == "") continue;
+                    if (
+                        allTxtsFullPath[i].ToLower().Contains(_config.unityUINameRegex[j].ToLower())
+                        //new Regex().Match().Success
+                        )
+                    {
+
+                        _txt_cache.Add(allTxts[i]);
+                        l("[***] Added: " + allTxtsFullPath[i].ToLower());
+                        l("[***] Start Alignment: " + allTxts[i].alignment.ToString());
+                    }
                 }
             }
         }
@@ -514,7 +561,7 @@ public static class messageBoardCtrlYonixwUtils
         }
     }
 
-    public static void reloadConfig()
+    public static void reloadConfig(bool firstNull = false)
     {
 
         XWConfig config = new XWConfig();
@@ -535,7 +582,7 @@ public static class messageBoardCtrlYonixwUtils
             l("Console open because config, F5-Refresh, F6-Actions");
         }
 
-        resetConfigLocal();
+        resetConfigLocal(firstNull);
 
     }
 
