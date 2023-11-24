@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-16"?>
 <XWConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <openDebugConsole>true</openDebugConsole>
+  <openDebugConsole>false</openDebugConsole>
   <debugLines>
     <!-- Empty to ignore -->
     <!-- Use https://www.freeformatter.com/xml-escape.html for any text -->
@@ -10,6 +10,28 @@
     <string>123אבג</string>
     -->
   </debugLines>
+  
+  <!-- Flip: -1 to neg, 0 dont change (default), 1 to pos -->
+  <!-- Flip is good case for 1 picture, not for sections with many text and picture  -->
+  
+  <PositionFlip>
+    <FlipXYZ>
+      <ExactPath>/main/root/system/Canvas/messageBoard(Clone)/body/quakeTarget/name</ExactPath>
+      <X>1</X> <!-- Move name to right (pos) -->
+    </FlipXYZ>
+    <FlipXYZ>
+      <ExactPath>/main/root/system/Canvas/messageBoard(Clone)/body/arrowR/arrow</ExactPath>
+      <X>-1</X> <!-- Move Arrow to left (neg) -->
+    </FlipXYZ>
+  </PositionFlip>
+  
+  <ScaleFlip>
+    <FlipXYZ>
+      <ExactPath>/main/root/system/Canvas/messageBoard(Clone)/body/arrowR/arrow</ExactPath>
+      <X>-1</X> <!-- Flip Arrow on Vertical -->
+    </FlipXYZ>
+  </ScaleFlip>
+  
   <!-- UI Align: use with "~{num}~" like "~5~" 
     1  UpperLeft   
     2  UpperCenter 
@@ -42,21 +64,123 @@
     <string>selectPlate(Clone)/body/select</string> <!-- 3 choises -->
   </unityUINameRegex>
   <simpleTranslate>
-    <XWSimpleReplace>
-      <exact>Back</exact>
-      <replace>~4~חזור</replace>
-    </XWSimpleReplace>
-    <XWSimpleReplace>
+  <!-- buttons -->
+	<XWSimpleReplace>
       <exact>Options</exact>
-      <replace>~4~הגדרות</replace>
+      <replace>~1~הגדרות </replace>
     </XWSimpleReplace>
-    <XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Court Record</exact>
+      <replace>~1~רשומות המשפט </replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Back</exact>
+      <replace>~1~חזרה למשחק</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
       <exact>Default</exact>
-      <replace>~4~אפס</replace>
+      <replace>~1~ברירת מחדל</replace>
     </XWSimpleReplace>
-    <XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Title Screen</exact>
+      <replace>~1~מסך הבית</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Profiles</exact>
+      <replace>~1~פרופילים</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Evidence</exact>
+      <replace>~1~ראיות</replace>
+    </XWSimpleReplace>
+  <!-- settings -->
+	<XWSimpleReplace>
+      <exact>Save or load a game.</exact>
+      <replace>שמור או טען משחק.</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Adjust BGM volume.</exact>
+      <replace>כוונן את עוצמת המוזיקה.</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Adjust sound effects volume.</exact>
+      <replace>כוונן את עוצמת צלילי האפקטים.</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Turn screen shaking on or off.</exact>
+      <replace>הפעל או כבה רעידות מסך.</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Adjust text box transparency.</exact>
+      <replace>כוונן את שקיפות תיבת המלל.</replace>
+    </XWSimpleReplace>
+  <!-- Court Records -->
+	<XWSimpleReplace>
+      <exact>Attorney's Badge</exact>
+      <replace>תג עורך דין</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>No one would believe I</exact>
+      <replace>אף אחד לא היה מאמין לי</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>was a defense attorney</exact>
+      <replace>שאני עורך דין לולא היה התג הזה ברשותי.</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>if I didn't carry this.</exact>
+      <replace></replace>
+    </XWSimpleReplace>
+	
+	<XWSimpleReplace>
+      <exact>Cindy's Autopsy Report</exact>
+      <replace>דוח נתיחה: מור זקס</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Time of death: 7/31, 4PM - 5PM</exact>
+      <replace>זמן מוות משוער: 70/13, 00:71-00:61.</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Cause of death: loss of</exact>
+      <replace>סיבת המוות: איבוד רב של דם בשל</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>blood due to blunt trauma.</exact>
+      <replace>ספיגת פגיעה מכלי נשק קהה.</replace>
+    </XWSimpleReplace>
+	
+  <!-- choices -->
+	<XWSimpleReplace>
       <exact>Mia Fey</exact>
-      <replace>מיה פיי</replace>
+      <replace>מיה שאול</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Phoenix Wright</exact>
+      <replace>דן דין</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Cinder Block</exact>
+      <replace>אנה זקס</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Larry Butz</exact>
+      <replace>עמוס עמק</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Cindy Stone</exact>
+      <replace>מור זקס</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Poisoned</exact>
+      <replace>הרעלה</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Hit with a blunt object</exact>
+      <replace>מכה חזקה</replace>
+    </XWSimpleReplace>
+	<XWSimpleReplace>
+      <exact>Strangled</exact>
+      <replace>חניקה</replace>
     </XWSimpleReplace>
   </simpleTranslate>
 </XWConfig>
