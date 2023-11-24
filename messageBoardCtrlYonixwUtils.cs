@@ -109,6 +109,23 @@ public static class messageBoardCtrlYonixwUtils
         public bool skipInvNumbers = false;
 
         public List<string> debugLines = new List<string>();
+
+        public class FlipXYZ
+        {
+            // Since the XY center is in 0,0 then -X is like flipping it Horizontal
+            // -1 to neg, 0 dont change (default), 1 to pos
+            public string ExactPath = "";
+            public int X=0; //  -1 Horizontal if Scale, L->R if Position
+            public int Y=0; //-1 Vertical if Scale, Botm->Top if position
+            // public bool Z=false; // Not really usefull in 2d game
+
+            [XmlIgnore]
+            public GameObject cacheGO = null;
+        }
+
+        public List<FlipXYZ> PositionFlip = new List<FlipXYZ>();
+        public List<FlipXYZ> ScaleFlip = new List<FlipXYZ>();
+
     }
 
     private static Dictionary<string, string> _simpleReplace =
@@ -202,7 +219,7 @@ public static class messageBoardCtrlYonixwUtils
         _console_open = true;
     }
 
-    public static void _LateUpdate(List<Text> line_list_)
+    public static void _LateUpdate(List<Text> line_list_, MonoBehaviour m)
     {
         if (_config == null)
         {
@@ -213,6 +230,7 @@ public static class messageBoardCtrlYonixwUtils
         {
             OpenConsole();
             l("[F4] Console Start! " + Time.deltaTime);
+            l("\nAfter game focus: F4-Manual Console, F5-Refresh, F6-Actions");
         }
         if (Input.GetKeyUp(KeyCode.F5))
         {
@@ -234,9 +252,14 @@ public static class messageBoardCtrlYonixwUtils
                 l("[1] dump 3 dialog lines");
                 l("[2] print dump all UnityEngine.UI.Text in scene");
                 l("[3] clipboard  dump all UnityEngine.UI.Text in scene");
-                l("[4] Save example config");
+                l("[4] print example XML config");
                 l("[5] print dump all monitored UI.Text from config");
                 l("[6] clipboard dump all monitored UI.Text from config");
+                l("[7] print dump images (sprites) info");
+                l("[8] clipboard dump images (sprites) info");
+                l("[9] flash on off images (2sec timer)");
+                l("[10] move a G.O to new XYZ position");
+                l("[11] flash all objects (until enter)");
             }
             if (option == "0")
             {
@@ -277,7 +300,7 @@ public static class messageBoardCtrlYonixwUtils
             }
             if (option == "4")
             {
-                saveExampleConfig();
+                printExampleConfig();
                 l("Saved!");
             }
             if (option == "5" || option == "6")
@@ -303,7 +326,31 @@ public static class messageBoardCtrlYonixwUtils
                     SetClipboard(result);
                 }
             }
-
+            if (option == "7" || option == "8")
+            {
+                string imageDump = ListImages();
+                if (option == "7")
+                {
+                    l(imageDump);
+                }
+                if (option == "8")
+                {
+                    l("Copied to clipboard");
+                    SetClipboard(imageDump);
+                }
+            }
+            if (option == "9")
+            {
+                startFlashImages(m);
+            }
+            if (option == "10")
+            {
+                MoveGO();
+            }
+            if (option == "11")
+            {
+                startFlashAllObjects(m);
+            }
         }
 
         // Add Texts that was created or active after scene start
@@ -399,6 +446,43 @@ public static class messageBoardCtrlYonixwUtils
             }
         }
 
+        FlipArrayProcess(_config.PositionFlip, true);
+        FlipArrayProcess(_config.ScaleFlip, false);
+    }
+
+    public static void FlipArrayProcess(List<XWConfig.FlipXYZ> list, bool isPosition)
+    {
+        if (list == null || list.Count == 0) return;
+        foreach (XWConfig.FlipXYZ f in list)
+        {
+            if (f.cacheGO == null) f.cacheGO = GameObject.Find(f.ExactPath);
+            if (f.cacheGO == null) continue;
+
+            Vector3 latestValue = isPosition ? 
+                f.cacheGO.transform.position : 
+                f.cacheGO.transform.localScale;
+
+            bool changed = false;
+
+            if ((f.X > 0 && latestValue.x < 0) || (f.X < 0 && latestValue.x > 0))
+            { 
+                latestValue.x = -1 * latestValue.x; 
+                changed = true; 
+            }
+            if ((f.Y > 0 && latestValue.y < 0) || (f.Y < 0 && latestValue.y > 0))
+            {
+                latestValue.y = -1 * latestValue.y;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                if (isPosition)
+                    f.cacheGO.transform.position = latestValue;
+                else
+                    f.cacheGO.transform.localScale = latestValue;
+            }
+        }
     }
 
     public static bool AlignCodeFix(Text text, ref string _TXT, string prefixAlign, string postfixAlign)
@@ -579,14 +663,14 @@ public static class messageBoardCtrlYonixwUtils
         if (_config.openDebugConsole)
         {
             OpenConsole();
-            l("Console open because config, F5-Refresh, F6-Actions");
+            l("Console open because config.\nAfter game focus: F4-Manual Console, F5-Refresh, F6-Actions");
         }
 
         resetConfigLocal(firstNull);
 
     }
 
-    public static void saveExampleConfig()
+    public static void printExampleConfig()
     {
         XWConfig c = new XWConfig();
         c.replaces.Add(
@@ -594,11 +678,16 @@ public static class messageBoardCtrlYonixwUtils
         );
         c.unityUINameRegex.Add("line");
         c.simpleTranslate.Add(
-            new XWConfig.XWSimpleReplace() { exact = "Back", replace = "חזור" }
+            new XWConfig.XWSimpleReplace() { exact = "Back", replace = "MyBack" }
         );
         c.openDebugConsole = true;
+        c.ScaleFlip = new List<XWConfig.FlipXYZ>()
+        {
+            new XWConfig.FlipXYZ() {ExactPath="/a/Vertical",X=1, Y=-1}
+        };
 
-        File.WriteAllText(getConfPath(), toXML(c));
+        l("Save path: '" + getConfPath() + "'\n");
+        l("Content:\n" + toXML(c) + "\n");
     }
 
     public static string regreplace(string txt, string from, string to)
@@ -616,4 +705,264 @@ public static class messageBoardCtrlYonixwUtils
         return txt;
     }
 
+    public static string ListImages()
+    {
+        
+        string result = "";
+
+        Image[] images = GameObject.FindObjectsOfType<Image>();
+        foreach (Image _img in images)
+        {
+            RectTransform _rt = _img.GetComponent<RectTransform>();
+            string textureName = "(null)";
+
+            if (_img.sprite != null)
+            {
+                textureName = "S:" + _img.sprite.name + " -> T:";
+                if (_img.sprite.texture != null)
+                {
+                    textureName += _img.sprite.texture.name;
+                }
+                else
+                {
+                    textureName += "(null)";
+                }
+            }
+            if (_img.mainTexture != null)
+            {
+                textureName += ", " + _img.mainTexture.name;
+            }
+
+            result += RectInfo(result, _rt, textureName,"IMAGE");
+        }
+
+
+        RawImage[] rawimages = GameObject.FindObjectsOfType<RawImage>();
+        foreach (RawImage _img in rawimages)
+        {
+            RectTransform _rt = _img.GetComponent<RectTransform>();
+            string textureName = "(null)";
+
+            if (_img.mainTexture != null)
+            {
+                textureName = "M:" + _img.mainTexture.name;
+            }
+            if (_img.mainTexture != null)
+            {
+                textureName += ", " + _img.mainTexture.name;
+            }
+
+            result += RectInfo(result, _rt, textureName, "RAWIMG");
+        }
+
+        SpriteRenderer[] spriteRenderers = GameObject.FindObjectsOfType<SpriteRenderer>();
+        foreach (SpriteRenderer _img in spriteRenderers)
+        {
+            
+            string textureName = "(null)";
+
+            if (_img.sprite != null)
+            {
+                textureName = "M:" + _img.sprite.name;
+            }
+
+            result += "*** [SPR.RNDR] Name: " + objPath(_img.transform) +
+                "\n POS3: " + _img.transform.position;
+            result += "\n" + textureName + "\n";
+        }
+
+        return result;
+    }
+    
+
+    private static string RectInfo(string result,  RectTransform _rt, string textureName, string tag)
+    {
+        /*
+         * https://discussions.unity.com/t/access-left-right-top-and-bottom-of-recttransform-via-script/129237/4
+        IMG: Image
+        SPR: S:fire -> T:fire
+        A.P: (Pos X, Pos Y)
+        Image%:
+            PIV: (Left 0 ->Right 1, Bottom 0 ->Top 1 )
+        Canvas%:
+            A.min: (0.00, 0.50) Left, Bottom
+            A.max: (1.00, 0.50) Right, top
+        OFFmin: (Left, Bottom)
+        OFFmax: (-RIGHT, -TOP)
+        Width
+        Height
+
+        */
+
+        return ("*** [" + tag + "] NAME: " + objPath(_rt.transform)
+        + "\n" + ("SPR: " + textureName)
+        + "\n" + ("AP: " + _rt.anchoredPosition)
+        + "\n" + ("PIV: " + _rt.pivot)
+        + "\n" + ("A.min: " + _rt.anchorMin) // 0.0f-1f
+        + "\n" + ("A.max: " + _rt.anchorMax) // 0.0f-1f
+        + "\n" + ("OFFM: " + _rt.offsetMin)
+        + "\n" + ("OFFX: " + _rt.offsetMax)
+        + "\n" + ("W: " + _rt.rect.width) // W
+        + "\n" + ("H: " + _rt.rect.height) // H
+        ) + "\n";
+
+        
+    }
+
+    public static void startFlashAllObjects(MonoBehaviour m)
+    {
+        m.StartCoroutine(FlashAllObjects());
+    }
+
+    public static IEnumerator FlashAllObjects()
+    {
+        Transform[] _all = GameObject.FindObjectsOfType<Transform>();
+        int count = _all.Length;
+        int i = 0;
+        foreach (Transform _t in _all)
+        {
+            if (_t.gameObject.activeInHierarchy /* not inactive for any reason (parent)*/)
+            {
+                l("(" + i + "/" + count + ") HIDE 1: " + objPath(_t));
+
+                _t.transform.gameObject.SetActive(false);
+
+                yield return null; // let it update in the scene
+                yield return null; // let it update in the scene
+
+                rl();
+
+                l("SHOW 1: " + objPath(_t));
+
+                _t.transform.gameObject.SetActive(true);
+
+                yield return null; // let it update in the scene
+                yield return null; // let it update in the scene
+            }
+            i++;
+
+            yield return null;
+        }
+        l("[DONE] Flash all Done!!!");
+    }
+
+    public static void startFlashImages(MonoBehaviour m)
+    {
+        m.StartCoroutine(FlashImages());
+    }
+
+    public static IEnumerator FlashImages()
+    {
+        l("*** Step 1");
+        Image[] images = GameObject.FindObjectsOfType<Image>();
+        foreach (Image _img in images)
+        {
+            bool hasImage = _img.sprite != null || _img.mainTexture != null;
+            
+            if (hasImage)
+            {
+                l("HIDE 1: " + objPath(_img.transform));
+
+                _img.transform.gameObject.SetActive(false);
+
+                yield return new WaitForSeconds(2);
+
+                l("SHOW 1: " + objPath(_img.transform));
+
+                _img.transform.gameObject.SetActive(true);
+            }
+        }
+
+        l("*** Step 2");
+        RawImage[] rawimages = GameObject.FindObjectsOfType<RawImage>();
+        foreach (RawImage _img in rawimages)
+        {
+
+            bool hasImage = _img.mainTexture != null || _img.texture ;
+
+            if (hasImage)
+            {
+                l("HIDE 2: " + objPath(_img.transform));
+
+                _img.transform.gameObject.SetActive(false);
+
+                yield return new WaitForSeconds(2);
+
+                l("SHOW 2: " + objPath(_img.transform));
+
+                _img.transform.gameObject.SetActive(true);
+            }
+        }
+
+        l("*** Step 3");
+        SpriteRenderer[] spriteRenderers = GameObject.FindObjectsOfType<SpriteRenderer>();
+        foreach (SpriteRenderer _img in spriteRenderers)
+        {
+            bool hasImage = _img.sprite != null;
+
+            if (hasImage)
+            {
+                l("HIDE 3: " + objPath(_img.transform));
+
+                _img.transform.gameObject.SetActive(false);
+
+                yield return new WaitForSeconds(2);
+
+                l("SHOW 3: " + objPath(_img.transform));
+
+                _img.transform.gameObject.SetActive(true);
+            }
+        }
+
+        l("*** Step [DONE!]");
+    }
+
+    public static void MoveGO()
+    {
+        l("Please enter g.o. path:");
+        string path = rl();
+
+        if (path == null || path == "" || path.IndexOf('/') < 0 )
+        {
+            l("Bad path, stopping");
+            return;
+        }
+
+        GameObject go = GameObject.Find(path);
+        if (go == null)
+        {
+            l("Can't find '" + path + "' stopping");
+            return;
+        }
+
+        l("Found, Current position: " + go.transform.position);
+
+        l("Please enter new position: X,Y,Z");
+
+        string newPos = rl();
+
+        string[] xyzStr = newPos.Split(',');
+
+        if (xyzStr.Length != 3)
+        {
+            l("Bad X,Y,Z stopping");
+            return;
+        }
+
+        float x=0, y=0, z=0;
+        bool valid = true;
+
+        valid = valid && float.TryParse(xyzStr[0], out x);
+        valid = valid && float.TryParse(xyzStr[1], out y);
+        valid = valid && float.TryParse(xyzStr[2], out z);
+
+        if (!valid)
+        {
+            l("Bad parse, stopping");
+            return;
+        }
+
+        go.transform.position = new Vector3(x, y, z);
+    }
+    
 }
