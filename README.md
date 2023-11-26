@@ -8,3 +8,5 @@
 * AAT - Editing MDT and  Unity3d Files/Assets -  https://youtu.be/_00Y8i4UNI4
     * me saying PDF is actually PNG or Photoshop... sorry it was 3am)
     * https://github.com/yonixw/unity-asset-rebundle for the rebundle POC
+* `*.bin` `*.cho` `*.mh` to xml 2 way converter:
+    *  https://github.com/yonixw/pw-aat-bin-xml
