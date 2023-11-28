@@ -144,13 +144,14 @@ public static class YonixwRTLReverser
 		//	i++;
 		//}
 
-		i = 1;
-        foreach(string t in tests)
-        {
-			Console.WriteLine("[" + i + "] '" + t + "'");
-			Console.WriteLine(RTLFix(t));
-			i++;
-		}
+		//i = 1;
+		//      foreach(string t in tests)
+		//      {
+		//	Console.WriteLine("[" + i + "] '" + t + "'");
+		//	Console.WriteLine(RTLFix(t));
+		//	i++;
+		//}
+
 
 		Console.ReadKey();
 	}
