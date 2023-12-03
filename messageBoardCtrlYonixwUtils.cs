@@ -79,6 +79,8 @@ public static class messageBoardCtrlYonixwUtils
 
     public static List<Text> _txt_cache = new List<Text>();
 
+    public static List<Text> _latest_lines_cache = new List<Text>();
+
     public static XWConfig _config = null;
 
     public class XWConfig
@@ -106,7 +108,8 @@ public static class messageBoardCtrlYonixwUtils
 
         public bool openDebugConsole = false;
 
-        public bool skipInvNumbers = false;
+        public bool skipInvNumbers = true; // If we skip, the text can have normal numbers
+        public bool skipInvNumbersForDialog = false;
 
         public List<string> debugLines = new List<string>();
 
@@ -221,6 +224,35 @@ public static class messageBoardCtrlYonixwUtils
 
     public static void _LateUpdate(List<Text> line_list_, MonoBehaviour m)
     {
+        // _LateUpdate is for 3 lines of dialog with animation only,
+        //      for all other text, the processing will be done on -
+        //      _LateUpdateFull
+        //  And at most 1 frame will be mixed until we set
+        //      _latest_lines_cache
+
+        _latest_lines_cache = line_list_;
+
+
+        if (_config == null)
+        {
+            reloadConfig(true); // Slow if console is open
+        }
+
+        // Change for dialog value:
+        bool _last_config_inverted = _config.skipInvNumbers;
+        _config.skipInvNumbers = _config.skipInvNumbersForDialog;
+
+        for (int i = 0; i < line_list_.Count; i++)
+        {
+            Text text = line_list_[i];
+            mainModProcessUIText(text, line_list_);
+        }
+
+        _config.skipInvNumbers = _last_config_inverted;
+    }
+
+    public static void _LateUpdateFull(MonoBehaviour m)
+    {
         if (_config == null)
         {
             reloadConfig(true); // Slow if console is open
@@ -249,7 +281,7 @@ public static class messageBoardCtrlYonixwUtils
             {
                 l("[H] Help, all options:");
                 l("[0] Clear console");
-                l("[1] dump 3 dialog lines");
+                l("[1] ------- deprecated");
                 l("[2] print dump all UnityEngine.UI.Text in scene");
                 l("[3] clipboard  dump all UnityEngine.UI.Text in scene");
                 l("[4] print example XML config");
@@ -264,12 +296,6 @@ public static class messageBoardCtrlYonixwUtils
             if (option == "0")
             {
                 Console.Clear();
-            }
-            if (option == "1")
-            {
-                l("[line 0]: " + line_list_[0].text);
-                l("[line 1]: " + line_list_[1].text);
-                l("[line 2]: " + line_list_[2].text);
             }
             if (option == "2" || option == "3")
             {
@@ -395,6 +421,14 @@ public static class messageBoardCtrlYonixwUtils
             // is removed (or the text is empty). 
 
             Text text = _txt_cache[i];
+
+            if (_latest_lines_cache != null && _latest_lines_cache.IndexOf(text) > -1)
+            {
+                // The proccessing of animated dialog lines
+                // will be done on _LateUpdate
+                continue; 
+            }
+
             if (text == null || text.IsDestroyed() || !text.IsActive())
             {
                 _txt_cache.RemoveAt(i);
@@ -402,52 +436,58 @@ public static class messageBoardCtrlYonixwUtils
                 continue;
             }
 
-            string _TXT = text.text;
+            mainModProcessUIText(text, null);
 
-            bool noChange =
-                string.IsNullOrEmpty(_TXT) ||
-                _TXT.StartsWith(_rtl_flag);
-
-
-            if (!noChange)
-            {
-                if (_config.debugLines.Count > 0)
-                {
-                    int _dbg_i = line_list_.IndexOf(text);
-                    if (_dbg_i > -1 && _dbg_i < _config.debugLines.Count)
-                    {
-                        _TXT = _config.debugLines[_dbg_i];
-                    }
-                }
-
-                if (_simpleReplace.ContainsKey(_TXT))
-                {
-                    _TXT = _simpleReplace[_TXT];
-                }
-
-                const string other = "～";
-                const string prefixAlign = "~";
-                const string postfixAlign = "~";
-
-                if (!AlignCodeFix(text, ref _TXT, prefixAlign, postfixAlign))
-                    if(!AlignCodeFix(text, ref _TXT, other, other))
-                    {
-                        if (line_list_.IndexOf(text) > -1)
-                        {
-                            // Go right unless explictly saying so
-                            // Assuming only dialog can have changing align
-                            text.alignment = TextAnchor.MiddleRight;
-                        }
-                    }
-
-                text.text =
-                        _rtl_flag +
-                        fullregreplace(YonixwRTLReverser.RTLFix(_TXT));
-            }
         }
 
         FlipArrayProcess(_config.PositionFlip, true);
         FlipArrayProcess(_config.ScaleFlip, false);
+    }
+
+    public static void mainModProcessUIText(Text text, List<Text> line_list_)
+    {
+        string _TXT = text.text;
+
+        bool noChange =
+            string.IsNullOrEmpty(_TXT) ||
+            _TXT.StartsWith(_rtl_flag);
+
+
+        if (!noChange)
+        {
+            if (line_list_ != null && _config.debugLines.Count > 0)
+            {
+                int _dbg_i = line_list_.IndexOf(text);
+                if (_dbg_i > -1 && _dbg_i < _config.debugLines.Count)
+                {
+                    _TXT = _config.debugLines[_dbg_i];
+                }
+            }
+
+            if (_simpleReplace.ContainsKey(_TXT))
+            {
+                _TXT = _simpleReplace[_TXT];
+            }
+
+            const string other = "～";
+            const string prefixAlign = "~";
+            const string postfixAlign = "~";
+
+            if (!DoAlignCodeFix(text, ref _TXT, prefixAlign, postfixAlign))
+                if (!DoAlignCodeFix(text, ref _TXT, other, other))
+                {
+                    if (line_list_ != null && line_list_.IndexOf(text) > -1)
+                    {
+                        // Go right unless explictly saying so
+                        // Assuming only dialog can have changing align
+                        text.alignment = TextAnchor.MiddleRight;
+                    }
+                }
+
+            text.text =
+                    _rtl_flag +
+                    YonixwRTLReverser.RTLFix(fullregreplace(_TXT));
+        }
     }
 
     public static void FlipArrayProcess(List<XWConfig.FlipXYZ> list, bool isPosition)
@@ -485,7 +525,7 @@ public static class messageBoardCtrlYonixwUtils
         }
     }
 
-    public static bool AlignCodeFix(Text text, ref string _TXT, string prefixAlign, string postfixAlign)
+    public static bool DoAlignCodeFix(Text text, ref string _TXT, string prefixAlign, string postfixAlign)
     {
         int _s = _TXT.IndexOf(prefixAlign);
         if (_s > -1)

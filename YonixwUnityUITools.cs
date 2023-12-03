@@ -35,6 +35,8 @@ namespace UnityEngine.UI
 
         public static Text asText(object o)
         {
+            // This function is a trick for dnSpy... because sometimes
+            //      it will be confused about the correct type of Text
             return (Text)o;
         }
 

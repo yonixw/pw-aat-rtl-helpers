@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 public static class YonixwRTLReverser
 {
 	// "22:22", "01/02/23", "1,000.55", "1,000", "44.55",
-	public static Regex numberWords = new Regex("^\\d[/\\d:\\.\\,\\\\]*\\d+$",RegexOptions.Compiled);
+	public static Regex numberWords = new Regex("^\\d[/\\d:\\.\\,xｘXＸ☓\\\\]*\\d+$", RegexOptions.Compiled);
 
 	public static string processWord(string word)
 	{
